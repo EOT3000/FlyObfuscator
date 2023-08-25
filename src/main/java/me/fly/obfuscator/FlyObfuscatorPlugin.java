@@ -8,9 +8,11 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import me.fly.obfuscator.wrapper.WrapperPlayServerLogin;
+import me.fly.obfuscator.wrapper.WrapperPlayServerMultiBlockChange;
 import me.fly.obfuscator.wrapper.WrapperPlayServerPosition;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -50,6 +52,7 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
         addPacketListenerChunk(PacketType.Play.Server.CHUNKS_BIOMES);
         addPacketListenerChunk(PacketType.Play.Server.UNLOAD_CHUNK);
         addPacketListenerChunk(PacketType.Play.Server.LIGHT_UPDATE);
+        addPacketListenerChunk(PacketType.Play.Server.VIEW_CENTRE);
 
         addPacketListenerPosition(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
         addPacketListenerPosition(PacketType.Play.Server.TILE_ENTITY_DATA);
@@ -59,13 +62,29 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
         addPacketListenerPosition(PacketType.Play.Server.DAMAGE_EVENT);
         addPacketListenerPosition(PacketType.Play.Server.WORLD_EVENT);
         addPacketListenerPosition(PacketType.Play.Server.OPEN_SIGN_EDITOR);
+        addPacketListenerPosition(PacketType.Play.Server.LOOK_AT);
+        addPacketListenerPosition(PacketType.Play.Server.SPAWN_POSITION);
+
+        addPacketListenerPosition(PacketType.Play.Client.JIGSAW_GENERATE);
+        addPacketListenerPosition(PacketType.Play.Client.SET_JIGSAW);
+        addPacketListenerPosition(PacketType.Play.Client.STRUCT);
+        addPacketListenerPosition(PacketType.Play.Client.SET_COMMAND_BLOCK);
+        addPacketListenerPosition(PacketType.Play.Client.UPDATE_SIGN);
+        addPacketListenerPosition(PacketType.Play.Client.USE_ITEM);
 
         addPacketListenerRawPositionDouble(PacketType.Play.Server.WORLD_PARTICLES);
         addPacketListenerRawPositionDouble(PacketType.Play.Server.VEHICLE_MOVE);
 
+        addPacketListenerRawPositionDouble(PacketType.Play.Client.POSITION);
+        addPacketListenerRawPositionDouble(PacketType.Play.Client.POSITION_LOOK);
+        addPacketListenerRawPositionDouble(PacketType.Play.Client.VEHICLE_MOVE);
+
+        addPacketListenerRawPositionInt(PacketType.Play.Server.NAMED_SOUND_EFFECT);
+
         addPacketListenerPosition(PacketType.Play.Client.BLOCK_DIG);
 
         addPacketListenerSyncPosition();
+        addPacketListenerMultiBlock();
         addPacketListenerOptionalPosition(PacketType.Play.Server.DAMAGE_EVENT, 4);
     }
 
@@ -105,7 +124,7 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
                 int z = ints.read(1);
 
                 ints.write(0, x+xMod*direction);
-                ints.write(1, z+zMod*direction);
+                ints.write(2, z+zMod*direction);
             }
         });
     }
@@ -126,7 +145,7 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
                 double z = doubles.read(1);
 
                 doubles.write(0, x+xMod*direction);
-                doubles.write(1, z+zMod*direction);
+                doubles.write(2, z+zMod*direction);
             }
         });
     }
@@ -182,6 +201,21 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
             @Override
             public void onPacketSending(PacketEvent event) {
                 NMS.ifPresentProcessVec(event.getPacket(), index, xMod*direction, xMod*direction);
+            }
+        });
+    }
+
+    private void addPacketListenerMultiBlock() {
+        protocolManager.addPacketListener(new PacketAdapter(
+                this,
+                ListenerPriority.HIGHEST,
+                PacketType.Play.Server.MULTI_BLOCK_CHANGE
+        ) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                WrapperPlayServerMultiBlockChange packet = new WrapperPlayServerMultiBlockChange(event.getPacket());
+
+                packet.setChunk(new ChunkCoordIntPair(packet.getChunk().getChunkX()+xMod, packet.getChunk().getChunkX()+zMod));
             }
         });
     }
