@@ -25,6 +25,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.wrappers.EnumWrappers;
+import net.minecraft.world.entity.RelativeMovement;
 
 public class WrapperPlayServerPosition extends AbstractPacket {
     public static final PacketType TYPE = PacketType.Play.Server.POSITION;
@@ -138,9 +139,7 @@ public class WrapperPlayServerPosition extends AbstractPacket {
         handle.getFloat().write(1, value);
     }
 
-    private static final Class<?> FLAGS_CLASS = MinecraftReflection
-            .getMinecraftClass("EnumPlayerTeleportFlags",
-                    "PacketPlayOutPosition$EnumPlayerTeleportFlags");
+    private static final Class<?> FLAGS_CLASS = RelativeMovement.class;
 
     public enum PlayerTeleportFlag {
         X, Y, Z, Y_ROT, X_ROT

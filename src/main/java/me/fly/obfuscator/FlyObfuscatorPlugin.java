@@ -11,6 +11,7 @@ import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
+import me.fly.obfuscator.wrapper.WrapperPlayClientUseItem;
 import me.fly.obfuscator.wrapper.WrapperPlayServerLogin;
 import me.fly.obfuscator.wrapper.WrapperPlayServerMultiBlockChange;
 import me.fly.obfuscator.wrapper.WrapperPlayServerPosition;
@@ -58,7 +59,6 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
         addPacketListenerPosition(PacketType.Play.Server.TILE_ENTITY_DATA);
         addPacketListenerPosition(PacketType.Play.Server.BLOCK_ACTION);
         addPacketListenerPosition(PacketType.Play.Server.BLOCK_CHANGE);
-        addPacketListenerPosition(PacketType.Play.Server.MULTI_BLOCK_CHANGE);
         addPacketListenerPosition(PacketType.Play.Server.DAMAGE_EVENT);
         addPacketListenerPosition(PacketType.Play.Server.WORLD_EVENT);
         addPacketListenerPosition(PacketType.Play.Server.OPEN_SIGN_EDITOR);
@@ -70,10 +70,12 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
         addPacketListenerPosition(PacketType.Play.Client.STRUCT);
         addPacketListenerPosition(PacketType.Play.Client.SET_COMMAND_BLOCK);
         addPacketListenerPosition(PacketType.Play.Client.UPDATE_SIGN);
-        addPacketListenerPosition(PacketType.Play.Client.USE_ITEM);
 
         addPacketListenerRawPositionDouble(PacketType.Play.Server.WORLD_PARTICLES);
         addPacketListenerRawPositionDouble(PacketType.Play.Server.VEHICLE_MOVE);
+        addPacketListenerRawPositionDouble(PacketType.Play.Server.SPAWN_ENTITY);
+        addPacketListenerRawPositionDouble(PacketType.Play.Server.SPAWN_ENTITY_EXPERIENCE_ORB);
+        addPacketListenerRawPositionDouble(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
 
         addPacketListenerRawPositionDouble(PacketType.Play.Client.POSITION);
         addPacketListenerRawPositionDouble(PacketType.Play.Client.POSITION_LOOK);
@@ -82,6 +84,7 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
         addPacketListenerRawPositionInt(PacketType.Play.Server.NAMED_SOUND_EFFECT);
 
         addPacketListenerPosition(PacketType.Play.Client.BLOCK_DIG);
+        addPacketListenerItemUse();
 
         addPacketListenerSyncPosition();
         addPacketListenerMultiBlock();
@@ -111,6 +114,8 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
 
     private void addPacketListenerRawPositionInt(PacketType type) {
         int direction = type.isClient() ? -16 : 16;
+
+
         protocolManager.addPacketListener(new PacketAdapter(
                 this,
                 ListenerPriority.HIGHEST,
@@ -121,10 +126,15 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
                 StructureModifier<Integer> ints = event.getPacket().getIntegers();
 
                 int x = ints.read(0);
-                int z = ints.read(1);
+                int z = ints.read(2);
 
                 ints.write(0, x+xMod*direction);
                 ints.write(2, z+zMod*direction);
+            }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
             }
         });
     }
@@ -142,10 +152,15 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
                 StructureModifier<Double> doubles = event.getPacket().getDoubles();
 
                 double x = doubles.read(0);
-                double z = doubles.read(1);
+                double z = doubles.read(2);
 
                 doubles.write(0, x+xMod*direction);
                 doubles.write(2, z+zMod*direction);
+            }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
             }
         });
     }
@@ -168,6 +183,11 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
 
                 poss.write(0, pos.add(new BlockPosition(x+xMod*direction, 0, z+zMod*direction)));
             }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
+            }
         });
     }
 
@@ -181,12 +201,19 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
             public void onPacketSending(PacketEvent event) {
                 WrapperPlayServerPosition packet = new WrapperPlayServerPosition(event.getPacket());
 
-                if(packet.getFlags().contains(WrapperPlayServerPosition.PlayerTeleportFlag.X)) {
-                    packet.setX(packet.getX()+xMod*16);
+                System.out.println("Packet: " + packet.getX() + "," + packet.getZ() + "," + packet.getFlags());
+
+                if (!packet.getFlags().contains(WrapperPlayServerPosition.PlayerTeleportFlag.X)) {
+                    packet.setX(packet.getX() + xMod * 16);
                 }
-                if(packet.getFlags().contains(WrapperPlayServerPosition.PlayerTeleportFlag.Z)) {
-                    packet.setZ(packet.getZ()+zMod*16);
+                if (!packet.getFlags().contains(WrapperPlayServerPosition.PlayerTeleportFlag.Z)) {
+                    packet.setZ(packet.getZ() + zMod * 16);
                 }
+            }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
             }
         });
     }
@@ -200,7 +227,12 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
         ) {
             @Override
             public void onPacketSending(PacketEvent event) {
-                NMS.ifPresentProcessVec(event.getPacket(), index, xMod*direction, xMod*direction);
+                NMS.ifPresentProcessVec(event.getPacket(), index, xMod*direction, zMod*direction);
+            }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
             }
         });
     }
@@ -215,7 +247,32 @@ public class FlyObfuscatorPlugin extends JavaPlugin implements Listener {
             public void onPacketSending(PacketEvent event) {
                 WrapperPlayServerMultiBlockChange packet = new WrapperPlayServerMultiBlockChange(event.getPacket());
 
-                packet.setChunk(new ChunkCoordIntPair(packet.getChunk().getChunkX()+xMod, packet.getChunk().getChunkX()+zMod));
+                packet.setChunk(new BlockPosition(packet.getChunk().getX()+xMod, packet.getChunk().getY(), packet.getChunk().getZ()+zMod));
+            }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
+            }
+        });
+    }
+
+    private void addPacketListenerItemUse() {
+        protocolManager.addPacketListener(new PacketAdapter(
+                this,
+                ListenerPriority.HIGHEST,
+                PacketType.Play.Client.USE_ITEM
+        ) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                WrapperPlayClientUseItem packet = new WrapperPlayClientUseItem(event.getPacket());
+
+                packet.add(-xMod*16, -zMod*16);
+            }
+
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                onPacketSending(event);
             }
         });
     }

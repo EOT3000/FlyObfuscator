@@ -20,6 +20,7 @@ package me.fly.obfuscator.wrapper;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
 import com.comphenix.protocol.wrappers.MultiBlockChangeInfo;
 
@@ -41,8 +42,8 @@ public class WrapperPlayServerMultiBlockChange extends AbstractPacket {
      *
      * @return The current chunk
      */
-    public ChunkCoordIntPair getChunk() {
-        return handle.getChunkCoordIntPairs().read(0);
+    public BlockPosition getChunk() {
+        return handle.getSectionPositions().read(0);
     }
 
     /**
@@ -50,8 +51,8 @@ public class WrapperPlayServerMultiBlockChange extends AbstractPacket {
      *
      * @param value - new value
      */
-    public void setChunk(ChunkCoordIntPair value) {
-        handle.getChunkCoordIntPairs().write(0, value);
+    public void setChunk(BlockPosition value) {
+        handle.getSectionPositions().write(0, value);
     }
 
     /**
