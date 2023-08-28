@@ -62,6 +62,6 @@ public class WrapperPlayClientUseItem extends AbstractPacket {
     public void add(int x, int z) {
         MovingObjectPositionBlock position = getPosition();
 
-        setPosition(new MovingObjectPositionBlock(position.e().a(x,0,z), position.b(), position.a(), position.d()));
+        setPosition(new MovingObjectPositionBlock(position.e().b(x,0,z), position.b(), position.a().b(x,0,z), position.d()));
     }
 }
